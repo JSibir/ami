@@ -55,7 +55,7 @@
   "sideEffects": false,
   "dependencies": {
     "OpenJPEG.js": "joedrago/openjpeg#master",
-    "dicom-parser": "1.8.1",
+    "dicom-parser": "^1.8.5",
     "image-JPEG2000": "ReflexionMed/image-JPEG2000#master",
     "jpeg-lossless-decoder-js": "1.2.3",
     "math-float32-to-binary-string": "^1.0.0",

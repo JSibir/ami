@@ -2497,10 +2497,10 @@ di@^0.0.1:
   resolved "https://registry.yarnpkg.com/di/-/di-0.0.1.tgz#806649326ceaa7caa3306d75d985ea2748ba913c"
   integrity sha1-gGZJMmzqp8qjMG112YXqJ0i6kTw=
 
-dicom-parser@1.8.1:
-  version "1.8.1"
-  resolved "https://registry.yarnpkg.com/dicom-parser/-/dicom-parser-1.8.1.tgz#5baef740f7ae2911921f3e4109b89c936b8b3273"
-  integrity sha512-8lgmQ+p4KD9lWdDpte/goUFZW9BrNCqYM/mEpO2IZl1srHj+2kmzWNbIMnYdQH60IMreS0ECJ8BnWE0rHSvBGA==
+dicom-parser@^1.8.5:
+  version "1.8.5"
+  resolved "https://registry.yarnpkg.com/dicom-parser/-/dicom-parser-1.8.5.tgz#626aab3f3aa3d54452c302b2628248f27b351f22"
+  integrity sha512-gaUOcyPkJ3ykOvSf1nQdNoTnIT4s/evXSaHHOH2OejmVxU3BGjjx1hXBy2zs57gH6ouMEa1TEhLXo4JEiSc1SA==
 
 diff@3.5.0, diff@^3.1.0, diff@^3.2.0:
   version "3.5.0"
