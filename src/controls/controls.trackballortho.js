@@ -5,6 +5,8 @@
  * @author Max Smolens / https://github.com/msmolens
  */
 
+import Intersections from '../core/core.intersections';
+
 const trackballOrtho = (three = window.THREE) => {
   if (three === undefined || three.EventDispatcher === undefined) {
     return null;
@@ -134,15 +136,16 @@ const trackballOrtho = (three = window.THREE) => {
       })();
 
       this.zoomCamera = function() {
+        let factor;
         if (_state === STATE.TOUCH_ZOOM_PAN) {
-          var factor = _touchZoomDistanceEnd / _touchZoomDistanceStart;
+          factor = _touchZoomDistanceEnd / _touchZoomDistanceStart;
           _touchZoomDistanceStart = _touchZoomDistanceEnd;
 
           _this.object.zoom *= factor;
 
           _changed = true;
         } else {
-          var factor = 1.0 + (_zoomEnd.y - _zoomStart.y) * _this.zoomSpeed;
+          factor = 1.0 + (_zoomEnd.y - _zoomStart.y) * _this.zoomSpeed;
 
           if (Math.abs(factor - 1.0) > EPS && factor > 0.0) {
             _this.object.zoom /= factor;
@@ -196,6 +199,73 @@ const trackballOrtho = (three = window.THREE) => {
           }
         };
       })();
+
+      /**
+       * Move the camera so that the object inside the bounding box is position aligned
+       *
+       * @param {Array}  boundingBox stack.worldBoundingBox()
+       * @param {string} position    left | center | right
+       */
+      this.align = function(boundingBox, position) {
+        if (position === 'center') {
+          _this.object.center();
+
+          return;
+        }
+
+        if (!Array.isArray(boundingBox) || boundingBox.length !== 6 || !['left', 'right'].includes(position)) {
+          window.console.warn(`Arguments are not valid`);
+
+          return;
+        }
+
+        const xCord = {
+          'left': 1,
+          'right': _this.domElement.offsetWidth - 1
+        }[position];
+        const topLeftCorner = {
+          x: (xCord / _this.domElement.offsetWidth) * 2 - 1,
+          y: -(1 / _this.domElement.offsetHeight) * 2 + 1
+        };
+        const rayCaster = new three.Raycaster();
+
+        rayCaster.setFromCamera(topLeftCorner, _this.object);
+
+        const xCosine = rayCaster.ray.direction.clone().cross(_this.object.up);
+        const edgeIntersection = Intersections.rayPlane({
+          position: rayCaster.ray.origin,
+          direction: rayCaster.ray.direction
+        }, {
+          position: _this.object.box.center,
+          direction: rayCaster.ray.direction
+        });
+        const edgePoint = edgeIntersection.clone().projectOnVector(xCosine);
+        const boxIntersections = Intersections.rayBox({
+          position: _this.object.box.center,
+          direction: xCosine
+        }, {
+          center: _this.object.box.center,
+          halfDimensions: new three.Vector3(
+              (boundingBox[1] - boundingBox[0]) / 2,
+              (boundingBox[3] - boundingBox[2]) / 2,
+              (boundingBox[5] - boundingBox[4]) / 2
+          )
+        });
+
+        let boxIntersectionCondition = boxIntersections[0].dot(xCosine) < boxIntersections[1].dot(xCosine);
+        if (position === 'right') {
+          boxIntersectionCondition = !boxIntersectionCondition;
+        }
+
+        const boxPoint = (boxIntersectionCondition ? boxIntersections[0] : boxIntersections[1])
+            .clone().projectOnVector(xCosine);
+        const distance = boxPoint.distanceTo(edgePoint)
+            * (edgePoint.dot(xCosine) < boxPoint.dot(xCosine) ? 1 : -1);
+        const alignVector = xCosine.clone().multiplyScalar(distance);
+
+        _this.object.position.add(alignVector);
+        _this.target.add(alignVector);
+      };
 
       this.update = function() {
         _eye.subVectors(_this.object.position, _this.target);
@@ -254,14 +324,14 @@ const trackballOrtho = (three = window.THREE) => {
 
         _prevState = _state;
 
-        if (_state !== STATE.NONE) {
-          return;
-        } else if (event.keyCode === _this.keys[STATE.ROTATE] && !_this.noRotate) {
-          _state = STATE.ROTATE;
-        } else if (event.keyCode === _this.keys[STATE.ZOOM] && !_this.noZoom) {
-          _state = STATE.ZOOM;
-        } else if (event.keyCode === _this.keys[STATE.PAN] && !_this.noPan) {
-          _state = STATE.PAN;
+        if (_state === STATE.NONE) {
+          if (event.keyCode === _this.keys[STATE.ROTATE] && !_this.noRotate) {
+            _state = STATE.ROTATE;
+          } else if (event.keyCode === _this.keys[STATE.ZOOM] && !_this.noZoom) {
+            _state = STATE.ZOOM;
+          } else if (event.keyCode === _this.keys[STATE.PAN] && !_this.noPan) {
+            _state = STATE.PAN;
+          }
         }
       }
 
