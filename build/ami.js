@@ -29416,6 +29416,7 @@ var trackball = function trackball() {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "trackballOrtho", function() { return trackballOrtho; });
+/* harmony import */ var _core_core_intersections__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../core/core.intersections */ "./src/core/core.intersections.js");
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -29428,6 +29429,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
  * @author Patrick Fuller / http://patrick-fuller.com
  * @author Max Smolens / https://github.com/msmolens
  */
+
+
 
 var trackballOrtho = function trackballOrtho() {
   var three = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : window.THREE;
@@ -29559,15 +29562,16 @@ var trackballOrtho = function trackballOrtho() {
       }();
 
       _this2.zoomCamera = function () {
+        var factor = void 0;
         if (_state === STATE.TOUCH_ZOOM_PAN) {
-          var factor = _touchZoomDistanceEnd / _touchZoomDistanceStart;
+          factor = _touchZoomDistanceEnd / _touchZoomDistanceStart;
           _touchZoomDistanceStart = _touchZoomDistanceEnd;
 
           _this.object.zoom *= factor;
 
           _changed = true;
         } else {
-          var factor = 1.0 + (_zoomEnd.y - _zoomStart.y) * _this.zoomSpeed;
+          factor = 1.0 + (_zoomEnd.y - _zoomStart.y) * _this.zoomSpeed;
 
           if (Math.abs(factor - 1.0) > EPS && factor > 0.0) {
             _this.object.zoom /= factor;
@@ -29614,6 +29618,67 @@ var trackballOrtho = function trackballOrtho() {
           }
         };
       }();
+
+      /**
+       * Move the camera so that the object inside the bounding box is position aligned
+       *
+       * @param {Array}  boundingBox stack.worldBoundingBox()
+       * @param {string} position    left | center | right
+       */
+      _this2.align = function (boundingBox, position) {
+        if (position === 'center') {
+          _this.object.center();
+
+          return;
+        }
+
+        if (!Array.isArray(boundingBox) || boundingBox.length !== 6 || !['left', 'right'].includes(position)) {
+          window.console.warn('Arguments are not valid');
+
+          return;
+        }
+
+        var xCord = {
+          'left': 1,
+          'right': _this.domElement.offsetWidth - 1
+        }[position];
+        var topLeftCorner = {
+          x: xCord / _this.domElement.offsetWidth * 2 - 1,
+          y: -(1 / _this.domElement.offsetHeight) * 2 + 1
+        };
+        var rayCaster = new three.Raycaster();
+
+        rayCaster.setFromCamera(topLeftCorner, _this.object);
+
+        var xCosine = rayCaster.ray.direction.clone().cross(_this.object.up);
+        var edgeIntersection = _core_core_intersections__WEBPACK_IMPORTED_MODULE_0__["default"].rayPlane({
+          position: rayCaster.ray.origin,
+          direction: rayCaster.ray.direction
+        }, {
+          position: _this.object.box.center,
+          direction: rayCaster.ray.direction
+        });
+        var edgePoint = edgeIntersection.clone().projectOnVector(xCosine);
+        var boxIntersections = _core_core_intersections__WEBPACK_IMPORTED_MODULE_0__["default"].rayBox({
+          position: _this.object.box.center,
+          direction: xCosine
+        }, {
+          center: _this.object.box.center,
+          halfDimensions: new three.Vector3((boundingBox[1] - boundingBox[0]) / 2, (boundingBox[3] - boundingBox[2]) / 2, (boundingBox[5] - boundingBox[4]) / 2)
+        });
+
+        var boxIntersectionCondition = boxIntersections[0].dot(xCosine) < boxIntersections[1].dot(xCosine);
+        if (position === 'right') {
+          boxIntersectionCondition = !boxIntersectionCondition;
+        }
+
+        var boxPoint = (boxIntersectionCondition ? boxIntersections[0] : boxIntersections[1]).clone().projectOnVector(xCosine);
+        var distance = boxPoint.distanceTo(edgePoint) * (edgePoint.dot(xCosine) < boxPoint.dot(xCosine) ? 1 : -1);
+        var alignVector = xCosine.clone().multiplyScalar(distance);
+
+        _this.object.position.add(alignVector);
+        _this.target.add(alignVector);
+      };
 
       _this2.update = function () {
         _eye.subVectors(_this.object.position, _this.target);
@@ -29672,14 +29737,14 @@ var trackballOrtho = function trackballOrtho() {
 
         _prevState = _state;
 
-        if (_state !== STATE.NONE) {
-          return;
-        } else if (event.keyCode === _this.keys[STATE.ROTATE] && !_this.noRotate) {
-          _state = STATE.ROTATE;
-        } else if (event.keyCode === _this.keys[STATE.ZOOM] && !_this.noZoom) {
-          _state = STATE.ZOOM;
-        } else if (event.keyCode === _this.keys[STATE.PAN] && !_this.noPan) {
-          _state = STATE.PAN;
+        if (_state === STATE.NONE) {
+          if (event.keyCode === _this.keys[STATE.ROTATE] && !_this.noRotate) {
+            _state = STATE.ROTATE;
+          } else if (event.keyCode === _this.keys[STATE.ZOOM] && !_this.noZoom) {
+            _state = STATE.ZOOM;
+          } else if (event.keyCode === _this.keys[STATE.PAN] && !_this.noPan) {
+            _state = STATE.PAN;
+          }
         }
       }
 
